@@ -1,0 +1,28 @@
+# Claude Code session files
+.claude/
+
+# Playwright MCP test artifacts
+.playwright-mcp/
+
+# Screenshots and local debug images
+*.png
+*.jpg
+*.jpeg
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# Frontend (also covered by frontend/.gitignore)
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/tsconfig.tsbuildinfo
+frontend/next-env.d.ts

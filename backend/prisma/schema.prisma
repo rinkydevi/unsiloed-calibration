@@ -1,0 +1,49 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime         @default(now())
+  runs         CalibrationRun[]
+  schemas      CustomSchema[]
+}
+
+model CalibrationRun {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  docType           String
+  schemaId          String?
+  totalFields       Int
+  overallAccuracy   Float
+  stpThreshold      Float
+  stpRate           Float
+  stpTarget         Float    @default(0.95)
+  sampleSizeWarning Boolean  @default(false)
+  thresholdCILower  Float    @default(0)
+  thresholdCIUpper  Float    @default(1)
+  resultJson        String
+  docNamesJson      String   @default("[]")
+  notes             String?
+}
+
+model CustomSchema {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  fieldsJson String
+  jsonSchema String
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+}
