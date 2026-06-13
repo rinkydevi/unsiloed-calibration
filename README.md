@@ -1,55 +1,54 @@
 # Unsiloed Calibration Validator
 
-Built by Rinky Devi as part of applying for the Founding Engineer role at Unsiloed AI.
+A tool for teams using Unsiloed's document extraction API to verify whether the model's confidence scores are actually calibrated on their own documents — before committing to a production deployment.
 
 ## The Problem
 
-Aman Mishra wrote about a mortgage CEO who said: "My problem is knowing which 95% doesn't
-need review. If I can't tell that, my team reviews 100% anyway."
+Most document AI vendors report field-level accuracy. Almost none give customers a way to verify whether their confidence scores are calibrated on the customer's own documents.
 
-Most document AI vendors report field-level accuracy. Almost none give customers a way to
-verify whether their confidence scores are actually calibrated on the customer's own
-documents before committing to a deployment.
+The result: a mortgage ops team that's told "95% accuracy" still reviews 100% of extractions, because they can't tell which 95% is safe to auto-accept.
 
-This tool does that.
+This tool answers that question with data.
 
 ## What It Does
 
-Upload your documents, provide ground truth values for key fields, and the tool runs
-them through Unsiloed's /v2/extract API. It then plots your actual confidence-vs-accuracy
-curve and tells you exactly what confidence threshold gives you 95%+ accuracy on
-auto-accepted fields — and what straight-through processing rate that enables.
+Upload your documents, provide known-correct ground truth values, and the tool runs them through Unsiloed's `/v2/extract` API. It then:
+
+- Plots your actual confidence-vs-accuracy calibration curve
+- Identifies the confidence threshold where accuracy ≥ 95% on your documents
+- Shows exactly what straight-through processing (STP) rate that threshold enables
+- Breaks down calibration quality per field with statistical confidence intervals
+- Estimates monthly review cost savings at any threshold
 
 ## Live Demo
 
-`/results?demo=true` — loads pre-computed calibration data for Financial Filing documents
-without requiring an API key.
+Visit `/results?demo=true` — loads pre-computed calibration data for Financial Filing documents without requiring an API key.
 
 ## Run Locally
 
 ```bash
-# Frontend
 cd frontend
 npm install
 npm run dev
 ```
 
-Set your Unsiloed API key in the browser UI (never stored server-side).
+Enter your Unsiloed API key in the browser UI. It is stored in `localStorage` only and sent directly to Unsiloed's API — never through an intermediary server.
 
 ## How It Works
 
-1. User enters their Unsiloed API key (stored in `localStorage` only)
-2. User uploads PDFs and selects document type (Invoice / Financial Filing / Contract)
-3. User enters known-correct ground truth field values
-4. Tool calls `POST /v2/extract` for each PDF, polls `GET /extract/{job_id}` until complete
-5. Compares each extracted field to ground truth: strings (case-insensitive), numbers (±1% tolerance), dates (format-agnostic)
-6. Groups results into confidence buckets and computes actual accuracy per bucket
-7. Renders the calibration curve + recommends the STP threshold where accuracy ≥ 95%
-8. STP Calculator shows monthly cost savings at any threshold
+1. Enter your Unsiloed API key
+2. Upload PDFs and select document type (Invoice / Financial Filing / Contract, or define a custom schema)
+3. Enter known-correct ground truth values per document — or import via CSV template
+4. Tool calls `POST /v2/extract` for each PDF and polls until complete
+5. Compares extracted fields to ground truth: strings (case-insensitive), numbers (±1% tolerance), dates (format-agnostic)
+6. Groups results into confidence buckets and computes actual accuracy per bucket using isotonic regression
+7. Renders the calibration curve with Wilson 95% confidence intervals
+8. Recommends the STP threshold where smoothed accuracy ≥ your target (90% / 95% / 99%)
+9. STP Calculator shows monthly hours and cost savings at any threshold
 
 ## Stack
 
-Next.js 14 · TypeScript · Tailwind CSS · Recharts · Vercel
+Next.js 14 · TypeScript · Tailwind CSS · Recharts · Fastify · Prisma · Vercel
 
 ## Contact
 
