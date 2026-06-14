@@ -5,6 +5,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# openssl needed by Prisma schema engine on Alpine
+RUN apk add --no-cache openssl
+
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
 
@@ -21,6 +24,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# openssl needed by Prisma migrate at runtime
+RUN apk add --no-cache openssl
 
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
