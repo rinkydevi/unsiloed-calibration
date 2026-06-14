@@ -1,13 +1,11 @@
-version: "3.9"
-
 services:
-  # ── PostgreSQL (use instead of SQLite for production-like dev) ──────────
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: unsiloed_calibration
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: localdev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localdev}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -18,36 +16,38 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Fastify Backend ──────────────────────────────────────────────────────
+  # ── Fastify Backend ──────────────────────────────────────────────────────────
   api:
     build:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://postgres:localdev@db:5432/unsiloed_calibration
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-localdev}@db:5432/unsiloed_calibration
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -base64 32)}
       PORT: 3001
-      FRONTEND_URL: http://localhost:3000
-      NODE_ENV: development
+      HOST: 0.0.0.0
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
     ports:
       - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend/src:/app/src  # hot reload in dev
+    restart: unless-stopped
 
-  # ── Next.js Frontend ─────────────────────────────────────────────────────
+  # ── Next.js Frontend ─────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
+      # This URL is used by the browser, so it must be host-reachable
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     ports:
       - "3000:3000"
     depends_on:
       - api
+    restart: unless-stopped
 
 volumes:
   pgdata:
