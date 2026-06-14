@@ -23,11 +23,26 @@ interface LocalSummary {
   notes?: string;
 }
 
+function mapLocalRuns() {
+  return getLocalRuns().map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt,
+    docType: r.docType,
+    totalFields: r.calibrationResult.totalFields,
+    overallAccuracy: r.calibrationResult.overallAccuracy,
+    stpThreshold: r.calibrationResult.stpThreshold,
+    stpRate: r.calibrationResult.stpRate,
+    stpTarget: r.calibrationResult.stpTarget ?? 0.95,
+    notes: r.notes,
+  }));
+}
+
 export default function HistoryPage() {
   const [runs, setRuns] = useState<(RunSummary | LocalSummary)[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [localFallback, setLocalFallback] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -36,21 +51,16 @@ export default function HistoryPage() {
         const data = await getRuns();
         setRuns(data);
       } else {
-        const local = getLocalRuns().map((r) => ({
-          id: r.id,
-          createdAt: r.createdAt,
-          docType: r.docType,
-          totalFields: r.calibrationResult.totalFields,
-          overallAccuracy: r.calibrationResult.overallAccuracy,
-          stpThreshold: r.calibrationResult.stpThreshold,
-          stpRate: r.calibrationResult.stpRate,
-          stpTarget: r.calibrationResult.stpTarget ?? 0.95,
-          notes: r.notes,
-        }));
-        setRuns(local);
+        setRuns(mapLocalRuns());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load history");
+      const msg = err instanceof Error ? err.message : "Failed to load history";
+      if (msg === "Not authenticated") {
+        setLocalFallback(true);
+        setRuns(mapLocalRuns());
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,7 +73,7 @@ export default function HistoryPage() {
   const handleDelete = async (id: string) => {
     setDeleting(id);
     try {
-      if (BACKEND_ENABLED) {
+      if (BACKEND_ENABLED && !localFallback) {
         await deleteRun(id);
       } else {
         deleteLocalRun(id);
@@ -93,9 +103,9 @@ export default function HistoryPage() {
           <div>
             <h1 className="text-2xl font-bold text-[#111827]">Calibration History</h1>
             <p className="text-gray-400 text-sm mt-1">
-              {BACKEND_ENABLED
+              {BACKEND_ENABLED && !localFallback
                 ? "Saved to your account."
-                : "Stored locally in this browser. Set NEXT_PUBLIC_API_URL to persist to a cloud account."}
+                : "Stored locally in this browser."}
             </p>
           </div>
           <Link
