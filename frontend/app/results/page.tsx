@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import CalibrationCurve from "@/components/CalibrationCurve";
@@ -132,6 +132,11 @@ function ResultsContent() {
     URL.revokeObjectURL(url);
   };
 
+  const sub1pctResult = useMemo(() => {
+    if (baseFieldResults.length === 0) return null;
+    return computeCalibration(baseFieldResults, 0.99);
+  }, [baseFieldResults]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-gray-400">
@@ -147,6 +152,10 @@ function ResultsContent() {
   const accuracyPct = (data.overallAccuracy * 100).toFixed(1);
   const thresholdAccuracyPct = ((data.thresholdAccuracy ?? data.overallAccuracy) * 100).toFixed(1);
   const thresholdStr = data.stpThreshold.toFixed(2);
+  const sub1pctThreshold = sub1pctResult?.stpThreshold ?? 1.0;
+  const sub1pctDocStpPct = sub1pctResult && sub1pctResult.stpThreshold < 1.0
+    ? (sub1pctResult.documentStpRate * 100).toFixed(0)
+    : null;
 
   return (
     <main className="min-h-screen bg-white">
@@ -206,22 +215,28 @@ function ResultsContent() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Fields Evaluated" value={String(data.totalFields)} />
           <StatCard
-            label="Overall Accuracy"
-            value={`${accuracyPct}%`}
-            accent={data.overallAccuracy >= 0.9}
+            label="Docs Auto-Accepted"
+            value={`${docStpPct}%`}
+            sub="of documents need zero human review"
+            accent
+          />
+          <StatCard
+            label="Sub-1% Error Threshold"
+            value={sub1pctThreshold < 1.0 ? sub1pctThreshold.toFixed(2) : "—"}
+            sub={sub1pctDocStpPct
+              ? `covers ${sub1pctDocStpPct}% of docs · <1% error rate`
+              : "not reached in this dataset"}
           />
           <StatCard
             label="STP Threshold"
             value={thresholdStr}
-            sub="confidence score cutoff"
+            sub={`at ${(stpTarget * 100).toFixed(0)}% accuracy target · ${stpPct}% of fields`}
           />
           <StatCard
-            label="STP Rate at Threshold"
-            value={`${stpPct}%`}
-            sub={`fields · ${docStpPct}% docs fully auto-accepted`}
-            accent
+            label="Fields Evaluated"
+            value={String(data.totalFields)}
+            sub={`${accuracyPct}% overall accuracy`}
           />
         </div>
 

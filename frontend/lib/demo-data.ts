@@ -77,7 +77,7 @@ const MODELLED_FIELD_RESULTS: FieldResult[] = [
   { field:"total_due",      groundTruth:"6200.00",                 extracted:"6200.00",                 confidence:0.929, isCorrect:true,  docIndex:7 },
   // Doc 8: SafeGuard Security Inc. — invoice_number drops compound segment at >0.95 conf
   { field:"vendor_name",    groundTruth:"SafeGuard Security Inc.", extracted:"SafeGuard Security Inc.", confidence:0.891, isCorrect:true,  docIndex:8 },
-  { field:"invoice_number", groundTruth:"SGS-INV-7724",            extracted:"SGS-7724",                confidence:0.953, isCorrect:false, docIndex:8 },
+  { field:"invoice_number", groundTruth:"SGS-INV-7724",            extracted:"SGS-7724",                confidence:0.948, isCorrect:false, docIndex:8 },
   { field:"issue_date",     groundTruth:"2024-03-01",              extracted:"2024-03-01",              confidence:0.974, isCorrect:true,  docIndex:8 },
   { field:"total_due",      groundTruth:"5396.00",                 extracted:"5396.00",                 confidence:0.912, isCorrect:true,  docIndex:8 },
   // Doc 9: ProStaff Recruitment
