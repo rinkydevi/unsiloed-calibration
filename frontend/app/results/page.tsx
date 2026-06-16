@@ -10,7 +10,7 @@ import STPCalculator from "@/components/STPCalculator";
 import { getDemoData, getDemoLabel, DEMO_DOC_NAMES, type DemoProvider } from "@/lib/demo-data";
 import { computeCalibration } from "@/lib/calibration";
 import type { CalibrationResult, FieldResult } from "@/lib/calibration";
-import { saveRunAuto, getLocalRun, getRun } from "@/lib/api-client";
+import { saveRunAuto, getLocalRun, getRun, computeCalibrationAPI } from "@/lib/api-client";
 import { BACKEND_ENABLED } from "@/lib/config";
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
@@ -116,11 +116,11 @@ function ResultsContent() {
     }
   };
 
-  const handleTargetChange = (target: number) => {
+  const handleTargetChange = async (target: number) => {
     setStpTarget(target);
-    const source = baseFieldResults.length > 0 ? baseFieldResults : [];
-    if (source.length > 0) {
-      setData(computeCalibration(source, target));
+    if (baseFieldResults.length > 0) {
+      const result = await computeCalibrationAPI(baseFieldResults, target);
+      setData(result);
     }
   };
 

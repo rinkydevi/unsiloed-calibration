@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth.js";
 import { runsRoutes } from "./routes/runs.js";
 import { schemasRoutes } from "./routes/schemas.js";
 import { groundTruthRoutes } from "./routes/ground-truth.js";
+import { calibrationRoutes } from "./routes/calibration.js";
 
 // ---------------------------------------------------------------------------
 // JWT type augmentation
@@ -99,6 +100,7 @@ await app.register(authRoutes, { prefix: "/api/auth" });
 await app.register(runsRoutes, { prefix: "/api/runs" });
 await app.register(schemasRoutes, { prefix: "/api/schemas" });
 await app.register(groundTruthRoutes, { prefix: "/api/ground-truth" });
+await app.register(calibrationRoutes, { prefix: "/api/calibration" });
 
 // ---------------------------------------------------------------------------
 // Start

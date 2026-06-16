@@ -11,7 +11,7 @@ export default function Home() {
         <div className="flex items-center gap-5">
           <Link href="/schemas" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">Schemas</Link>
           <Link href="/history" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">History</Link>
-          <Link href="/results?demo=aws" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">View Demo</Link>
+          <Link href="/results?demo=true" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">View Demo</Link>
         </div>
       </nav>
 

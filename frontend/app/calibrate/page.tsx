@@ -7,7 +7,8 @@ import UploadZone from "@/components/UploadZone";
 import GroundTruthForm from "@/components/GroundTruthForm";
 import CSVImport from "@/components/CSVImport";
 import { submitExtraction, pollResult } from "@/lib/unsiloed";
-import { compareValues, computeCalibration, FieldResult } from "@/lib/calibration";
+import { compareValues, FieldResult } from "@/lib/calibration";
+import { computeCalibrationAPI } from "@/lib/api-client";
 import { BUILTIN_SCHEMAS, getAllSchemas, type DocSchema } from "@/lib/schemas";
 import { useSchemas } from "@/hooks/use-schemas";
 
@@ -143,7 +144,8 @@ function CalibrateContent() {
         );
       }
 
-      const calibration = computeCalibration(allResults);
+      log(`Computing calibration...`);
+      const calibration = await computeCalibrationAPI(allResults);
       localStorage.setItem("unsiloed_last_calibration", JSON.stringify(calibration));
       localStorage.setItem("unsiloed_last_calibration_doc_type", schema.label);
       localStorage.setItem(

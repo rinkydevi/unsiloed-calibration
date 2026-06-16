@@ -4,7 +4,8 @@
  */
 
 import { API_URL, BACKEND_ENABLED } from "./config";
-import type { CalibrationResult } from "./calibration";
+import type { CalibrationResult, FieldResult } from "./calibration";
+import { computeCalibration } from "./calibration";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,21 @@ export function getLocalRun(id: string): LocalRun | null {
 export function deleteLocalRun(id: string): void {
   const updated = getLocalRuns().filter((r) => r.id !== id);
   localStorage.setItem(LOCAL_RUNS_KEY, JSON.stringify(updated));
+}
+
+// ── Calibration compute (server-side PAV + Wilson CI + ECE pipeline) ──────
+
+export async function computeCalibrationAPI(
+  fieldResults: FieldResult[],
+  stpTarget: number = 0.95
+): Promise<CalibrationResult> {
+  if (BACKEND_ENABLED) {
+    return apiFetch("/api/calibration/compute", {
+      method: "POST",
+      body: JSON.stringify({ fieldResults, stpTarget }),
+    });
+  }
+  return computeCalibration(fieldResults, stpTarget);
 }
 
 // ── Unified helpers (backend OR local) ────────────────────────────────────
