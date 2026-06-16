@@ -27,6 +27,7 @@ export interface FieldBreakdownRow {
   actualAccuracy: number;
   gap: number;
   status: "calibrated" | "overconfident" | "unreliable";
+  isOverconfident: boolean; // true even when status is "unreliable" — both can co-occur
   ece: number;           // Expected Calibration Error for this field
   sampleCount: number;
   pValueUnreliable: number; // one-sided binomial p-value (H0: accuracy >= 90%)
@@ -36,7 +37,8 @@ export interface CalibrationResult {
   totalFields: number;
   overallAccuracy: number;
   stpThreshold: number;
-  stpRate: number;
+  stpRate: number;        // % of fields above threshold
+  documentStpRate: number; // % of documents where ALL fields are above threshold
   stpTarget: number;
   calibrationCurve: BucketData[];
   fieldBreakdown: FieldBreakdownRow[];
@@ -184,12 +186,15 @@ export function computeCalibration(
     const ece = computeECE(fieldResults, BUCKETS);
     const pValueUnreliable = binomialLowerPValue(correctForField, n, 0.9);
 
+    // isOverconfident is independent of sample reliability — both can be true simultaneously
+    const isOverconfident = ece > 0.05 && gap > 0;
+
     // Statistically unreliable: reject H0 (accuracy >= 90%) at α = 0.05
-    // Overconfident: ECE > 5% AND net gap is positive (confident but wrong)
+    // Overconfident label only assigned when sample is reliable enough to trust the signal
     let status: "calibrated" | "overconfident" | "unreliable";
     if (pValueUnreliable < 0.05) {
       status = "unreliable";
-    } else if (ece > 0.05 && gap > 0) {
+    } else if (isOverconfident) {
       status = "overconfident";
     } else {
       status = "calibrated";
@@ -201,11 +206,21 @@ export function computeCalibration(
       actualAccuracy,
       gap,
       status,
+      isOverconfident,
       ece,
       sampleCount: n,
       pValueUnreliable,
     };
   });
+
+  // Document STP rate: % of docs where every field is above the threshold.
+  // This is the operationally correct metric — a single low-confidence field
+  // forces a human to open the document regardless of other fields.
+  const docIndices = Array.from(new Set(results.map((r) => r.docIndex)));
+  const docsFullyAbove = docIndices.filter((idx) =>
+    results.filter((r) => r.docIndex === idx).every((r) => r.confidence >= stpThreshold)
+  ).length;
+  const documentStpRate = docIndices.length > 0 ? docsFullyAbove / docIndices.length : 0;
 
   const minBucketCount =
     calibrationCurve.length > 0
@@ -218,6 +233,7 @@ export function computeCalibration(
     overallAccuracy,
     stpThreshold,
     stpRate,
+    documentStpRate,
     stpTarget,
     calibrationCurve,
     fieldBreakdown,

@@ -114,17 +114,22 @@ function CalibrateContent() {
 
         const gt = groundTruth[i] ?? {};
         for (const field of schema.fields) {
-          const extracted = result.result[field.key];
-          if (!extracted) continue;
           const truthVal = gt[field.key];
           if (!truthVal?.trim()) continue;
 
-          const isCorrect = compareValues(extracted.value, truthVal.trim(), field.type);
+          const extracted = result.result[field.key];
+          if (!extracted) {
+            log(`[${i + 1}/${files.length}] Field "${field.key}" not returned by Unsiloed — counted as incorrect (confidence 0).`);
+          }
+          const isCorrect = extracted
+            ? compareValues(extracted.value, truthVal.trim(), field.type)
+            : false;
+
           allResults.push({
             field: field.key,
             groundTruth: truthVal.trim(),
-            extracted: extracted.value,
-            confidence: extracted.score,
+            extracted: extracted?.value ?? null,
+            confidence: extracted?.score ?? 0,
             isCorrect,
             docIndex: i,
           });

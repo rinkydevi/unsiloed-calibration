@@ -20,9 +20,9 @@ function StatusBadge({ row }: { row: FieldBreakdownRow }) {
   return (
     <span
       className="text-red-600"
-      title={`p = ${row.pValueUnreliable.toFixed(3)} — statistically below 90% accuracy (α = 0.05)`}
+      title={`p = ${row.pValueUnreliable.toFixed(3)} — statistically below 90% accuracy (α = 0.05)${row.isOverconfident ? ` · ECE ${(row.ece * 100).toFixed(1)}% — also overconfident` : ""}`}
     >
-      🔴 Unreliable
+      🔴 Unreliable{row.isOverconfident ? " · ⚠️" : ""}
     </span>
   );
 }
@@ -130,7 +130,7 @@ export default function FieldBreakdown({ rows }: Props) {
           Gap = Avg Confidence − Actual Accuracy. Positive = model is overconfident on that field.
         </p>
         <p className="text-gray-400 text-xs">
-          Overconfident: ECE &gt; 5% and net gap is positive. Unreliable: statistically below 90% accuracy (binomial test, &#945; = 0.05). Hover status badge for details.
+          Overconfident: ECE &gt; 5% and net gap is positive. Unreliable: statistically below 90% accuracy (binomial test, &#945; = 0.05). A field can be both — hover the badge for details.
         </p>
       </div>
     </div>

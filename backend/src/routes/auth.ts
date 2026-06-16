@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import rateLimit from "@fastify/rate-limit";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -28,6 +29,15 @@ function userPublic(user: { id: string; email: string; name: string | null }) {
 }
 
 export async function authRoutes(app: FastifyInstance) {
+  await app.register(rateLimit, {
+    max: 10,
+    timeWindow: "1 minute",
+    keyGenerator: (req) => req.ip ?? "unknown",
+    errorResponseBuilder: () => ({
+      error: "Too many requests — try again in a minute",
+    }),
+  });
+
   // POST /api/auth/register
   app.post("/register", async (request: FastifyRequest, reply: FastifyReply) => {
     const parsed = RegisterBody.safeParse(request.body);

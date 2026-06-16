@@ -38,6 +38,15 @@ export default function STPCalculator({ stpThreshold, fieldResults, stpTarget, o
     return above / fieldResults.length;
   }, [threshold, fieldResults]);
 
+  const documentStpRate = useMemo(() => {
+    if (fieldResults.length === 0) return stpRate;
+    const docIndices = Array.from(new Set(fieldResults.map((r) => r.docIndex)));
+    const docsFullyAbove = docIndices.filter((idx) =>
+      fieldResults.filter((r) => r.docIndex === idx).every((r) => r.confidence >= threshold)
+    ).length;
+    return docIndices.length > 0 ? docsFullyAbove / docIndices.length : 0;
+  }, [threshold, fieldResults, stpRate]);
+
   const savings = useMemo(() => {
     const totalMonthlyFields = monthlyDocs * fieldsPerDoc;
     const autoAcceptedFields = totalMonthlyFields * stpRate;
@@ -148,7 +157,8 @@ export default function STPCalculator({ stpThreshold, fieldResults, stpTarget, o
               {(savings.stpRate * 100).toFixed(1)}%
             </div>
             <div className="text-gray-400 text-xs mt-1">
-              of fields auto-accepted, no human review needed
+              fields auto-accepted ·{" "}
+              <span className="tabular-nums">{(documentStpRate * 100).toFixed(1)}%</span> of docs fully auto-accepted
             </div>
           </div>
 
@@ -165,9 +175,10 @@ export default function STPCalculator({ stpThreshold, fieldResults, stpTarget, o
           <div className="bg-gray-50 border border-gray-100 rounded-lg p-3">
             <p className="text-gray-400 text-xs leading-relaxed">
               At threshold <span className="text-[#111827] font-mono">{threshold.toFixed(2)}</span>,{" "}
-              <span className="text-green-600">{(savings.stpRate * 100).toFixed(1)}%</span> of extractions
-              are auto-accepted. Your team only reviews the remaining{" "}
-              <span className="text-[#111827]">{((1 - savings.stpRate) * 100).toFixed(1)}%</span>.
+              <span className="text-green-600">{(savings.stpRate * 100).toFixed(1)}%</span> of fields
+              are auto-accepted, but only{" "}
+              <span className="text-green-600">{(documentStpRate * 100).toFixed(1)}%</span> of documents
+              need zero human review. A single field below threshold sends the whole document to a human.
             </p>
           </div>
         </div>

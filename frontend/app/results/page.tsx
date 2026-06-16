@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import CalibrationCurve from "@/components/CalibrationCurve";
 import FieldBreakdown from "@/components/FieldBreakdown";
+import PerFieldCurves from "@/components/PerFieldCurves";
 import STPCalculator from "@/components/STPCalculator";
 import { getDemoData, getDemoLabel, DEMO_DOC_NAMES, type DemoProvider } from "@/lib/demo-data";
 import { computeCalibration } from "@/lib/calibration";
@@ -142,6 +143,7 @@ function ResultsContent() {
   if (!data) return null;
 
   const stpPct = (data.stpRate * 100).toFixed(0);
+  const docStpPct = (data.documentStpRate * 100).toFixed(0);
   const accuracyPct = (data.overallAccuracy * 100).toFixed(1);
   const thresholdAccuracyPct = ((data.thresholdAccuracy ?? data.overallAccuracy) * 100).toFixed(1);
   const thresholdStr = data.stpThreshold.toFixed(2);
@@ -218,7 +220,7 @@ function ResultsContent() {
           <StatCard
             label="STP Rate at Threshold"
             value={`${stpPct}%`}
-            sub="fields auto-accepted"
+            sub={`fields · ${docStpPct}% docs fully auto-accepted`}
             accent
           />
         </div>
@@ -281,14 +283,14 @@ function ResultsContent() {
             — your team only reviews the remaining{" "}
             <span className="text-[#111827]">{100 - Number(stpPct)}%</span> where the model signals genuine uncertainty.
           </p>
-          {data.fieldBreakdown.some((f) => f.status === "overconfident") && (
+          {data.fieldBreakdown.some((f) => f.isOverconfident) && (
             <p className="text-sm text-gray-500 leading-relaxed border-t border-gray-200 pt-3">
               <span className="text-amber-600 font-semibold">Caution: </span>
               {data.fieldBreakdown
-                .filter((f) => f.status === "overconfident")
+                .filter((f) => f.isOverconfident)
                 .map((f) => f.field)
                 .join(", ")}{" "}
-              {data.fieldBreakdown.filter((f) => f.status === "overconfident").length === 1
+              {data.fieldBreakdown.filter((f) => f.isOverconfident).length === 1
                 ? "is overconfident"
                 : "are overconfident"}{" "}
               — the model reports high confidence but accuracy is lower than expected.
@@ -298,6 +300,7 @@ function ResultsContent() {
         </div>
 
         <CalibrationCurve data={data.calibrationCurve} />
+        <PerFieldCurves fieldResults={data.fieldResults} fieldBreakdown={data.fieldBreakdown} />
         <FieldBreakdown rows={data.fieldBreakdown} />
         <STPCalculator
           stpThreshold={data.stpThreshold}
@@ -368,10 +371,19 @@ function ResultsContent() {
   );
 }
 
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function generateReport(data: CalibrationResult, docType: string, isDemo: boolean, docNames: string[]): string {
   const rows = data.fieldBreakdown.map((r) => `
     <tr>
-      <td>${r.field}</td>
+      <td>${escapeHtml(r.field)}</td>
       <td>${(r.avgConfidence * 100).toFixed(1)}%</td>
       <td>${(r.actualAccuracy * 100).toFixed(1)}%</td>
       <td>${r.gap > 0 ? "+" : ""}${(r.gap * 100).toFixed(1)}%</td>
@@ -395,7 +407,7 @@ function generateReport(data: CalibrationResult, docType: string, isDemo: boolea
       const accuracy = correct / docFields.length;
       const avgConf = docFields.reduce((s, r) => s + r.confidence, 0) / docFields.length;
       const name = docNames[idx] ?? `doc_${idx + 1}.pdf`;
-      return `<tr><td>${name}</td><td>${docFields.length}</td><td>${(avgConf * 100).toFixed(1)}%</td><td>${(accuracy * 100).toFixed(0)}%</td></tr>`;
+      return `<tr><td>${escapeHtml(name)}</td><td>${docFields.length}</td><td>${(avgConf * 100).toFixed(1)}%</td><td>${(accuracy * 100).toFixed(0)}%</td></tr>`;
     }).join("");
     return `
   <h2 style="color:#6B7280;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;margin:32px 0 16px">Per-Document Results</h2>
@@ -414,7 +426,7 @@ function generateReport(data: CalibrationResult, docType: string, isDemo: boolea
     body { background: #ffffff; color: #111827; font-family: "Geist", "General Sans", Inter, system-ui, sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; }
     h1 { font-size: 24px; margin-bottom: 4px; }
     .subtitle { color: #6B7280; font-size: 14px; margin-bottom: 32px; }
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 32px; }
     .stat { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; }
     .stat-label { color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
     .stat-value { font-size: 28px; font-weight: 700; color: #111827; }
@@ -431,19 +443,20 @@ function generateReport(data: CalibrationResult, docType: string, isDemo: boolea
 <body>
   <h1>Unsiloed Calibration Report</h1>
   ${isDemo ? '<span class="demo-tag">Demo — sample financial documents</span>' : ""}
-  <div class="subtitle">${docType} · ${data.totalFields} fields evaluated</div>
+  <div class="subtitle">${escapeHtml(docType)} · ${data.totalFields} fields evaluated</div>
 
   <div class="stats">
     <div class="stat"><div class="stat-label">Fields Evaluated</div><div class="stat-value">${data.totalFields}</div></div>
     <div class="stat"><div class="stat-label">Overall Accuracy</div><div class="stat-value green">${(data.overallAccuracy * 100).toFixed(1)}%</div></div>
     <div class="stat"><div class="stat-label">STP Threshold</div><div class="stat-value">${data.stpThreshold.toFixed(2)}</div></div>
-    <div class="stat"><div class="stat-label">STP Rate</div><div class="stat-value green">${(data.stpRate * 100).toFixed(0)}%</div></div>
+    <div class="stat"><div class="stat-label">STP Rate (fields)</div><div class="stat-value green">${(data.stpRate * 100).toFixed(0)}%</div></div>
+    <div class="stat"><div class="stat-label">STP Rate (docs)</div><div class="stat-value green">${(data.documentStpRate * 100).toFixed(0)}%</div></div>
   </div>
 
   <div class="insight">
     At a confidence threshold of <strong>${data.stpThreshold.toFixed(2)}</strong>,
     Unsiloed achieves <strong style="color:#16a34a">${((data.thresholdAccuracy ?? data.overallAccuracy) * 100).toFixed(1)}%</strong> accuracy
-    on the <strong>${(data.stpRate * 100).toFixed(0)}%</strong> of ${docType.toLowerCase()} fields above this threshold
+    on the <strong>${(data.stpRate * 100).toFixed(0)}%</strong> of ${escapeHtml(docType.toLowerCase())} fields above this threshold
     — your team only reviews the remaining ${(100 - data.stpRate * 100).toFixed(0)}%.
   </div>
 
