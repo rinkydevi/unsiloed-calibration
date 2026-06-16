@@ -48,8 +48,10 @@ await app.register(fastifyCors, {
 await app.register(fastifyCookie);
 
 // JWT — uses httpOnly cookie named "token"
+const jwtSecret = process.env.JWT_SECRET;
+if (!jwtSecret) throw new Error("JWT_SECRET env var is required");
 await app.register(fastifyJwt, {
-  secret: process.env.JWT_SECRET ?? "dev-secret-change-in-prod",
+  secret: jwtSecret,
   cookie: {
     cookieName: "token",
     signed: false,

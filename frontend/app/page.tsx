@@ -48,20 +48,12 @@ export default function Home() {
           >
             Run Your Calibration →
           </Link>
-          <div className="flex flex-col sm:flex-row gap-2 items-center">
-            <Link
-              href="/results?demo=aws"
-              className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
-            >
-              Demo · AWS Textract
-            </Link>
-            <Link
-              href="/results?demo=google"
-              className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
-            >
-              Demo · Google DocAI
-            </Link>
-          </div>
+          <Link
+            href="/results?demo=true"
+            className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
+          >
+            View Demo →
+          </Link>
         </div>
       </div>
 

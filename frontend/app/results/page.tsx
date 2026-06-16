@@ -81,11 +81,15 @@ function ResultsContent() {
       const type = localStorage.getItem("unsiloed_last_calibration_doc_type");
       const names = localStorage.getItem("unsiloed_last_calibration_doc_names");
       if (raw) {
-        const parsed: CalibrationResult = JSON.parse(raw);
-        setData(parsed);
-        setBaseFieldResults(parsed.fieldResults);
-        setDocType(type ?? "Document");
-        setDocNames(names ? (JSON.parse(names) as string[]) : []);
+        try {
+          const parsed: CalibrationResult = JSON.parse(raw);
+          setData(parsed);
+          setBaseFieldResults(parsed.fieldResults);
+          setDocType(type ?? "Document");
+          setDocNames(names ? (JSON.parse(names) as string[]) : []);
+        } catch {
+          router.replace("/calibrate");
+        }
       } else {
         router.replace("/calibrate");
       }
@@ -335,12 +339,58 @@ function ResultsContent() {
             const avgConf = docFields.reduce((s, r) => s + r.confidence, 0) / docFields.length;
             return { idx, fields: docFields.length, accuracy, avgConf };
           });
+
+          // Calibration stability
+          const n = docRows.length;
+          const meanAcc = docRows.reduce((s, r) => s + r.accuracy, 0) / n;
+          const spread = Math.max(...docRows.map((r) => r.accuracy)) - Math.min(...docRows.map((r) => r.accuracy));
+          const stdDev = Math.sqrt(docRows.reduce((s, r) => s + (r.accuracy - meanAcc) ** 2, 0) / n);
+          const outlierFloor = meanAcc - 1.5 * stdDev;
+          const outlierDocs = docRows.filter((r) => r.accuracy < outlierFloor);
+
+          // Pearson r: does higher avgConf predict higher accuracy across docs?
+          const meanConf = docRows.reduce((s, r) => s + r.avgConf, 0) / n;
+          const cov = docRows.reduce((s, r) => s + (r.avgConf - meanConf) * (r.accuracy - meanAcc), 0) / n;
+          const sdConf = Math.sqrt(docRows.reduce((s, r) => s + (r.avgConf - meanConf) ** 2, 0) / n);
+          const pearsonR = sdConf > 0 && stdDev > 0 ? cov / (sdConf * stdDev) : null;
+
+          const stability =
+            spread < 0.1
+              ? { label: "Stable", textColor: "text-green-700", bg: "bg-green-50 border-green-200" }
+              : spread < 0.25
+              ? { label: "Some variation", textColor: "text-amber-700", bg: "bg-amber-50 border-amber-200" }
+              : { label: "High variation", textColor: "text-red-700", bg: "bg-red-50 border-red-200" };
+
           return (
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h2 className="text-[#111827] text-lg font-semibold mb-1">Per-Document Results</h2>
               <p className="text-gray-500 text-sm mb-4">
                 Which documents extracted cleanly — useful for spotting outlier layouts or scan quality issues.
               </p>
+
+              {/* Stability summary */}
+              <div className={`border rounded-lg px-4 py-3 mb-4 text-sm ${stability.bg}`}>
+                <span className={`font-semibold ${stability.textColor}`}>{stability.label}: </span>
+                <span className="text-gray-600">
+                  accuracy ranges {(spread * 100).toFixed(0)}pp across {n} documents
+                  (σ&thinsp;=&thinsp;{(stdDev * 100).toFixed(1)}pp).
+                </span>
+                {pearsonR !== null && n >= 5 && (
+                  <span className="text-gray-500">
+                    {" "}Confidence predicts accuracy across docs: r&thinsp;=&thinsp;{pearsonR.toFixed(2)}{" "}
+                    ({pearsonR >= 0.7 ? "strong" : pearsonR >= 0.4 ? "moderate" : "weak"} alignment).
+                  </span>
+                )}
+                {outlierDocs.length > 0 && (
+                  <span className="block mt-1 text-gray-600">
+                    <span className="text-amber-700 font-medium">
+                      {outlierDocs.length === 1 ? "1 document is" : `${outlierDocs.length} documents are`} significantly below average:{" "}
+                    </span>
+                    {outlierDocs.map((d) => docNames[d.idx] ?? `doc_${d.idx + 1}.pdf`).join(", ")}.
+                  </span>
+                )}
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -352,28 +402,32 @@ function ResultsContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {docRows.map(({ idx, fields, accuracy, avgConf }) => (
-                      <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 pr-6 text-[#111827] font-mono text-xs">
-                          {docNames[idx] ?? `doc_${idx + 1}.pdf`}
-                        </td>
-                        <td className="py-3 pr-6 text-gray-500">{fields}</td>
-                        <td className="py-3 pr-6 text-gray-500">{(avgConf * 100).toFixed(1)}%</td>
-                        <td className="py-3">
-                          <span
-                            className={
-                              accuracy >= 0.9
-                                ? "text-green-600"
-                                : accuracy >= 0.7
-                                ? "text-amber-600"
-                                : "text-red-600"
-                            }
-                          >
-                            {(accuracy * 100).toFixed(0)}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {docRows.map(({ idx, fields, accuracy, avgConf }) => {
+                      const isOutlier = accuracy < outlierFloor;
+                      return (
+                        <tr key={idx} className={`border-b border-gray-100 ${isOutlier ? "bg-amber-50" : "hover:bg-gray-50"}`}>
+                          <td className="py-3 pr-6 text-[#111827] font-mono text-xs">
+                            {docNames[idx] ?? `doc_${idx + 1}.pdf`}
+                            {isOutlier && <span className="ml-2 text-amber-500 text-xs" title="Accuracy is 1.5σ below average">⚠</span>}
+                          </td>
+                          <td className="py-3 pr-6 text-gray-500">{fields}</td>
+                          <td className="py-3 pr-6 text-gray-500">{(avgConf * 100).toFixed(1)}%</td>
+                          <td className="py-3">
+                            <span
+                              className={
+                                accuracy >= 0.9
+                                  ? "text-green-600"
+                                  : accuracy >= 0.7
+                                  ? "text-amber-600"
+                                  : "text-red-600"
+                              }
+                            >
+                              {(accuracy * 100).toFixed(0)}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
