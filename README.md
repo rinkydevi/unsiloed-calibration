@@ -37,7 +37,7 @@ The frontend degrades gracefully to `localStorage` when `NEXT_PUBLIC_API_URL` is
 | **Auth** | JWT in httpOnly cookies (`@fastify/jwt`), bcryptjs (cost 12) |
 | **Validation** | Zod at every API boundary |
 | **Infra** | Docker (multi-stage builds), docker-compose, PostgreSQL healthchecks |
-| **Calibration** | Isotonic regression (PAV), Wilson 95% CI, ECE, binomial p-value |
+| **Calibration** | Isotonic regression (PAV), Wilson 95% CI, ECE, binomial p-value, per-field curves, document STP rate |
 
 Fastify over Express: ~2× the throughput on the same hardware, built-in JSON schema serialization, and a plugin system that keeps concerns separated cleanly.
 
@@ -64,6 +64,10 @@ The core question is whether a vendor's stated confidence score is *calibrated* 
 7. **Sample size warnings**: triggered when total fields < 50 or any bucket has < 5 samples. A calibration curve from 8 documents is not actionable.
 
 8. **Threshold CI**: Wilson interval on the subset of fields *above* the STP threshold — this is what an enterprise buyer needs to trust automation.
+
+9. **Per-field calibration curves**: each field gets its own isotonic-smoothed reliability diagram. A field can be badly overconfident even when the aggregate ECE looks fine — a 10% weight diluted by 90% well-calibrated fields masks the problem in aggregate but the per-field chart shows it directly.
+
+10. **`documentStpRate`**: separate from the field-level STP rate. A human reviewer opens a document, not a field — one low-confidence field anywhere in a document pulls the whole document into the queue. `documentStpRate` reports the fraction of documents where *every* evaluated field clears the threshold; this is the number that maps directly to FTE hours saved.
 
 ---
 
@@ -216,6 +220,7 @@ The API image is distroless-friendly (Alpine base, non-root user in frontend ima
 - HTML report export passes all user data through `escapeHtml()` before injection.
 - Production error handler strips stack traces from 5xx responses.
 - API key for Unsiloed is stored in `localStorage` only and sent **directly** from the browser to Unsiloed's API — it never passes through this backend.
+- Auth routes rate-limited to 10 requests per minute per IP (`@fastify/rate-limit`).
 
 ---
 
@@ -241,7 +246,7 @@ unsiloed-calibration/
 │   └── package.json
 ├── frontend/
 │   ├── app/                       # Next.js App Router pages
-│   ├── components/                # UploadZone, CalibrationCurve, etc.
+│   ├── components/                # UploadZone, CalibrationCurve, PerFieldCurves, etc.
 │   ├── lib/
 │   │   ├── calibration.ts         # core calibration engine
 │   │   ├── isotonic.ts            # PAV algorithm (weighted isotonic regression)
