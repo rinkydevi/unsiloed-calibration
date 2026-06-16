@@ -6,7 +6,7 @@ import Link from "next/link";
 import CalibrationCurve from "@/components/CalibrationCurve";
 import FieldBreakdown from "@/components/FieldBreakdown";
 import STPCalculator from "@/components/STPCalculator";
-import { DEMO_DATA, DEMO_DOCUMENT_TYPE } from "@/lib/demo-data";
+import { getDemoData, getDemoLabel, DEMO_DOC_NAMES, type DemoProvider } from "@/lib/demo-data";
 import { computeCalibration } from "@/lib/calibration";
 import type { CalibrationResult, FieldResult } from "@/lib/calibration";
 import { saveRunAuto, getLocalRun, getRun } from "@/lib/api-client";
@@ -27,7 +27,10 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string;
 function ResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isDemo = searchParams.get("demo") === "true";
+  const demoParam = searchParams.get("demo");
+  const isDemo = demoParam === "true" || demoParam === "aws" || demoParam === "google";
+  const demoProvider: DemoProvider =
+    demoParam === "aws" ? "aws" : demoParam === "google" ? "google" : "modelled";
 
   const [data, setData] = useState<CalibrationResult | null>(null);
   const [baseFieldResults, setBaseFieldResults] = useState<FieldResult[]>([]);
@@ -43,9 +46,11 @@ function ResultsContent() {
   useEffect(() => {
     const load = async () => {
       if (isDemo) {
-        setData(DEMO_DATA);
-        setBaseFieldResults(DEMO_DATA.fieldResults);
-        setDocType(DEMO_DOCUMENT_TYPE);
+        const demo = getDemoData(demoProvider);
+        setData(demo);
+        setBaseFieldResults(demo.fieldResults);
+        setDocType("Invoice");
+        setDocNames(DEMO_DOC_NAMES);
         setLoading(false);
         return;
       }
@@ -108,7 +113,7 @@ function ResultsContent() {
 
   const handleTargetChange = (target: number) => {
     setStpTarget(target);
-    const source = baseFieldResults.length > 0 ? baseFieldResults : (isDemo ? DEMO_DATA.fieldResults : []);
+    const source = baseFieldResults.length > 0 ? baseFieldResults : [];
     if (source.length > 0) {
       setData(computeCalibration(source, target));
     }
@@ -138,6 +143,7 @@ function ResultsContent() {
 
   const stpPct = (data.stpRate * 100).toFixed(0);
   const accuracyPct = (data.overallAccuracy * 100).toFixed(1);
+  const thresholdAccuracyPct = ((data.thresholdAccuracy ?? data.overallAccuracy) * 100).toFixed(1);
   const thresholdStr = data.stpThreshold.toFixed(2);
 
   return (
@@ -150,7 +156,7 @@ function ResultsContent() {
           <Link href="/history" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">History</Link>
           {isDemo && (
             <span className="bg-amber-50 border border-amber-200 text-amber-700 text-xs px-3 py-1 rounded-full">
-              Demo — sample financial documents
+              Demo · {getDemoLabel(demoProvider)}
             </span>
           )}
           <Link href="/calibrate" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">
@@ -264,17 +270,16 @@ function ResultsContent() {
             <span className="text-[#FA82B9] font-semibold">Finding: </span>
             At a confidence threshold of <span className="text-[#111827] font-mono">{thresholdStr}</span>,
             Unsiloed achieves{" "}
-            <span className="text-green-600">{accuracyPct}%</span> accuracy
-            {data.thresholdCILower !== undefined && data.thresholdCIUpper !== undefined && (
+            <span className="text-green-600">{thresholdAccuracyPct}%</span> accuracy
+            {data.thresholdCILower !== undefined && data.thresholdCIUpper !== undefined && data.stpRate > 0 && (
               <span className="text-gray-400">
                 {" "}(95% CI: {(data.thresholdCILower * 100).toFixed(1)}%–{(data.thresholdCIUpper * 100).toFixed(1)}%)
               </span>
             )}
-            {" "}on fields above this threshold.{" "}
-            <span className="text-green-600">{stpPct}%</span> of
-            your {docType.toLowerCase()} fields can skip manual review — your team only touches the
-            remaining <span className="text-[#111827]">{100 - Number(stpPct)}%</span> where the model
-            signals genuine uncertainty.
+            {" "}on the{" "}
+            <span className="text-green-600">{stpPct}%</span> of your {docType.toLowerCase()} fields above this threshold
+            — your team only reviews the remaining{" "}
+            <span className="text-[#111827]">{100 - Number(stpPct)}%</span> where the model signals genuine uncertainty.
           </p>
           {data.fieldBreakdown.some((f) => f.status === "overconfident") && (
             <p className="text-sm text-gray-500 leading-relaxed border-t border-gray-200 pt-3">
@@ -437,8 +442,9 @@ function generateReport(data: CalibrationResult, docType: string, isDemo: boolea
 
   <div class="insight">
     At a confidence threshold of <strong>${data.stpThreshold.toFixed(2)}</strong>,
-    Unsiloed achieves &gt;95% accuracy. <strong style="color:#16a34a">${(data.stpRate * 100).toFixed(0)}%</strong> of
-    ${docType.toLowerCase()} fields can skip manual review entirely.
+    Unsiloed achieves <strong style="color:#16a34a">${((data.thresholdAccuracy ?? data.overallAccuracy) * 100).toFixed(1)}%</strong> accuracy
+    on the <strong>${(data.stpRate * 100).toFixed(0)}%</strong> of ${docType.toLowerCase()} fields above this threshold
+    — your team only reviews the remaining ${(100 - data.stpRate * 100).toFixed(0)}%.
   </div>
 
   <h2 style="color:#9CA3AF;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:16px">Field Breakdown</h2>

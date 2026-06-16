@@ -43,8 +43,9 @@ export interface CalibrationResult {
   fieldResults: FieldResult[];
   sampleSizeWarning: boolean;
   minBucketCount: number;
-  thresholdCILower: number;
-  thresholdCIUpper: number;
+  thresholdAccuracy: number;  // accuracy specifically on fields above stpThreshold
+  thresholdCILower: number;   // Wilson 95% CI lower bound for above-threshold accuracy
+  thresholdCIUpper: number;   // Wilson 95% CI upper bound for above-threshold accuracy
 }
 
 const DATE_FORMATS = [
@@ -165,8 +166,10 @@ export function computeCalibration(
   const aboveThreshold = results.filter((r) => r.confidence >= stpThreshold);
   const stpRate = totalFields > 0 ? aboveThreshold.length / totalFields : 0;
 
-  // Wilson CI on all extractions above the threshold (the number users care about)
+  // Accuracy and Wilson CI on extractions above the threshold — this is what the
+  // Finding block should display, NOT overallAccuracy, since the CI is for this subset.
   const aboveCorrect = aboveThreshold.filter((r) => r.isCorrect).length;
+  const thresholdAccuracy = aboveThreshold.length > 0 ? aboveCorrect / aboveThreshold.length : overallAccuracy;
   const thresholdCI = wilsonCI(aboveCorrect, aboveThreshold.length);
 
   // Step 5: Field breakdown with ECE + statistical tests
@@ -221,6 +224,7 @@ export function computeCalibration(
     fieldResults: results,
     sampleSizeWarning,
     minBucketCount,
+    thresholdAccuracy,
     thresholdCILower: thresholdCI.lower,
     thresholdCIUpper: thresholdCI.upper,
   };

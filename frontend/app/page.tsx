@@ -11,17 +11,12 @@ export default function Home() {
         <div className="flex items-center gap-5">
           <Link href="/schemas" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">Schemas</Link>
           <Link href="/history" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">History</Link>
-          <Link href="/results?demo=true" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">View Demo</Link>
+          <Link href="/results?demo=aws" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">View Demo</Link>
         </div>
       </nav>
 
       {/* Hero */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 py-24 text-center max-w-4xl mx-auto w-full">
-        <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-4 py-1.5 text-xs text-gray-500 mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#FA82B9] inline-block"></span>
-          Built for Unsiloed AI document teams
-        </div>
-
         <h1 className="text-5xl md:text-6xl font-bold text-[#111827] leading-tight mb-6">
           Does Unsiloed&apos;s confidence
           <br />
@@ -53,12 +48,20 @@ export default function Home() {
           >
             Run Your Calibration →
           </Link>
-          <Link
-            href="/results?demo=true"
-            className="text-gray-500 border border-gray-300 px-8 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-base"
-          >
-            See Demo Results
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-2 items-center">
+            <Link
+              href="/results?demo=aws"
+              className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
+            >
+              Demo · AWS Textract
+            </Link>
+            <Link
+              href="/results?demo=google"
+              className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
+            >
+              Demo · Google DocAI
+            </Link>
+          </div>
         </div>
       </div>
 
