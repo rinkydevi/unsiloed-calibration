@@ -10,8 +10,9 @@ export default function Home() {
         </span>
         <div className="flex items-center gap-5">
           <Link href="/schemas" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">Schemas</Link>
+          <Link href="/compare" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">Compare</Link>
           <Link href="/history" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">History</Link>
-          <Link href="/results?demo=true" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">View Demo</Link>
+          <Link href="/results?demo=true" className="text-gray-500 text-sm hover:text-[#111827] transition-colors">Demo</Link>
         </div>
       </nav>
 
@@ -49,10 +50,16 @@ export default function Home() {
             Run Your Calibration →
           </Link>
           <Link
-            href="/results?demo=true"
+            href="/compare"
             className="text-gray-500 border border-gray-300 px-5 py-3.5 rounded-lg hover:border-gray-400 hover:text-[#111827] transition-colors text-sm"
           >
-            View Demo →
+            Compare Providers →
+          </Link>
+          <Link
+            href="/results?demo=true"
+            className="text-gray-400 text-sm hover:text-gray-600 transition-colors"
+          >
+            View Demo
           </Link>
         </div>
       </div>

@@ -9,13 +9,14 @@ generator client {
 }
 
 model User {
-  id           String           @id @default(cuid())
-  email        String           @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime         @default(now())
-  runs         CalibrationRun[]
-  schemas      CustomSchema[]
+  id             String          @id @default(cuid())
+  email          String          @unique
+  passwordHash   String
+  name           String?
+  createdAt      DateTime        @default(now())
+  runs           CalibrationRun[]
+  schemas        CustomSchema[]
+  comparisonRuns ComparisonRun[]
 }
 
 model CalibrationRun {
@@ -47,4 +48,16 @@ model CustomSchema {
   jsonSchema String
   createdAt  DateTime  @default(now())
   deletedAt  DateTime?
+}
+
+model ComparisonRun {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  docType       String
+  stpTarget     Float    @default(0.95)
+  docNamesJson  String   @default("[]")
+  notes         String?
+  providersJson String
 }
